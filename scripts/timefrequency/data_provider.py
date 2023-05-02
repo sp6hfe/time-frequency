@@ -10,6 +10,7 @@ class CsvDataProvider:
 
         self.raw_data = pd.DataFrame(
             columns=[self.time_column_name, self.value_column_name])
+        self.resampled_data = self.raw_data.copy()
 
         self.data_filename_suffix = '[0-9][0-9][0-9][0-9][0-9][0-9].csv'
         self.date_path = []
@@ -41,6 +42,23 @@ class CsvDataProvider:
         # index this dataset by the time
         self.raw_data.set_index(self.time_column_name, inplace=True)
 
+        # resample dataset
+        self.__resample_1s()
+
+    def __resample_1s(self):
+        if(len(self.raw_data.index) < 2):
+            # nothing to resample due to missing data
+            return
+
+        # resample to 1[s] by interpolation
+        self.resampled_data = self.raw_data.resample('1S').interpolate()
+        # create new timebase in the range of the raw data
+        start_time = self.raw_data.index[0]
+        end_time = self.raw_data.index[-1]
+        data_points_times = pd.date_range(start_time, end_time, freq='1S')
+        # and reindex in order to calculate newly added points
+        self.resampled_data = self.resampled_data.reindex(data_points_times)
+
     def get_loaded_files_no(self):
         return self.loaded_files_no
 
@@ -52,3 +70,6 @@ class CsvDataProvider:
 
     def get_raw_data_no(self):
         return len(self.raw_data.index)
+
+    def get_data_no(self):
+        return len(self.resampled_data.index)
