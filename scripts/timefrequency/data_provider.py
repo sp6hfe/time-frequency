@@ -8,7 +8,7 @@ class CsvDataProvider:
         self.time_column_name = time_column_name
         self.value_column_name = value_column_name
 
-        self.data = pd.DataFrame(
+        self.raw_data = pd.DataFrame(
             columns=[self.time_column_name, self.value_column_name])
 
         self.data_filename_suffix = '[0-9][0-9][0-9][0-9][0-9][0-9].csv'
@@ -35,11 +35,20 @@ class CsvDataProvider:
         for _, path in self.date_path:
             new_data = pd.read_csv(path, comment='#', usecols=[self.time_column_name, self.value_column_name], parse_dates=[
                 self.time_column_name], dtype={self.value_column_name: float})
-            self.data = pd.concat([self.data, new_data], axis=0)
+            self.raw_data = pd.concat([self.raw_data, new_data], axis=0)
             self.loaded_files_no += 1
 
         # index this dataset by the time
-        self.data.set_index(self.time_column_name, inplace=True)
+        self.raw_data.set_index(self.time_column_name, inplace=True)
 
     def get_loaded_files_no(self):
         return self.loaded_files_no
+
+    def get_data_range_min(self):
+        return self.raw_data.index.min()
+
+    def get_data_range_max(self):
+        return self.raw_data.index.max()
+
+    def get_raw_data_no(self):
+        return len(self.raw_data.index)
