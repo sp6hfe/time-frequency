@@ -16,6 +16,7 @@ class DataProvider:
         self.__loaded_files_no = 0
 
     def load_csv(self, data_dir, data_filename_prefix):
+        print("Loading CSV data...")
         data_filename_suffix = '[0-9][0-9][0-9][0-9][0-9][0-9].csv'
         self.__resampled_data = pd.DataFrame(
             columns=self.__resampled_data.columns)
@@ -43,12 +44,16 @@ class DataProvider:
 
         # index this dataset by time
         self.__raw_data.set_index(self.__time_column_name, inplace=True)
+        print("Data set was loaded from " +
+              str(self.__loaded_files_no) + " matching files.")
+        print(str(len(self.__raw_data.index)) + " raw measurements span from " +
+              str(self.get_data_range_min()) + " to " + str(self.get_data_range_max()) + ".")
 
         # resample dataset
+        print("Resampling...")
         self.__resample_1s()
-
-    def get_loaded_files_no(self):
-        return self.__loaded_files_no
+        print("After resampling the amount of datapoints was increased by " + str(len(self.__resampled_data.index) - len(self.__raw_data.index)) +
+              " to get " + str(len(self.__resampled_data.index)) + " measurements evenly spaced in time.")
 
     def get_data_range_min(self):
         return self.__raw_data.index.min()
@@ -56,22 +61,13 @@ class DataProvider:
     def get_data_range_max(self):
         return self.__raw_data.index.max()
 
-    def get_raw_data_no(self):
-        return len(self.__raw_data.index)
-
-    def get_raw_data(self):
-        return self.__raw_data
-
-    def get_data_no(self):
-        return len(self.__resampled_data.index)
-
     def get_data(self):
         return self.__resampled_data
 
     # PRIVATE METHODS #
 
     def __resample_1s(self):
-        if(len(self.__raw_data.index) < 2):
+        if (len(self.__raw_data.index) < 2):
             # nothing to resample due to missing data
             return
 
