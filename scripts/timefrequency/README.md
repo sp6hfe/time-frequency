@@ -19,13 +19,14 @@ While allowing for calculations of useful metrics it is also usable for source d
 * source data file names should follow a pattern: `name_prefix` + `measurement_day` + file extension (i.e. `analysis230517.csv`)
 
 ### data files
-* data should be gathered evenly in time with resolution down to 1[s]
+* data should be gathered evenly in time with resolution down to 1[s] (resampling usually degrade signal's information)
+* files should at least consist of `time` and `value` records
 * earliest data point should be taken on `00:00:00 UTC`
 * latest data point should be taken on `23:59:59 UTC`
 * comment lines start with a `#` sign,
 
 ### CSV specifics
 * data should be `comma separated`
-* file should include a header row containing column names (i.e. `UTC,Freq`)
+* file should include a header row containing column names (i.e. `time,value`)
 * column with measurement timestamp should be in a datetime UTC format (i.e. `2023-05-17T01:15:27Z`)
 * column with measurement value should be a float number (i.e. `224999.865`)
