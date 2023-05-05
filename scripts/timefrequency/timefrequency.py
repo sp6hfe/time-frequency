@@ -3,26 +3,31 @@ from .allan import Allan
 
 
 class TimeFrequency:
-    def __init__(self, time_column_name, value_column_name):
-        self.__time_column_name = time_column_name
-        self.__value_column_name = value_column_name
-        self.__dp = DataProvider(
-            self.__time_column_name, self.__value_column_name)
-        self.__data_filename_prefix = "None"
+    def __init__(self):
+        self.__dp = DataProvider()
+        self.__filename_prefix = "None"
 
-    def load_csv_data(self, data_dir, data_filename_prefix):
-        self.__data_filename_prefix = data_filename_prefix
-        self.__dp.load_csv(data_dir, self.__data_filename_prefix)
+    def load_from_daily_csv(self, dir, filename_prefix, time_column_name, value_column_name):
+        self.__filename_prefix = filename_prefix
+        self.__dp.load_from_daily_csv(
+            dir, self.__filename_prefix, time_column_name, value_column_name)
 
-    def generate_mdev_plot(self, out_dir):
-        allan = Allan(self.__dp.get_data()[self.__value_column_name])
+    def generate_mdev_plot(self, dir):
+        if (len(self.__dp.get_data().index) < 2):
+            print("Can't generate MDEV plot as there is not much data for the operation.")
+            return
+
+        # calculate Allan deviation assuming data spaced with 1[s] rate
+        allan = Allan(self.__dp.get_data()[self.__dp.value_column_name])
         allan.calculate_mdev()
 
-        plot_title = "Modified Allan deviation for \"" + self.__data_filename_prefix + \
+        # configure the plot
+        plot_title = "Modified Allan deviation for \"" + self.__filename_prefix + \
             "\" dataset (" + str(self.__dp.get_data_range_min()) + \
             " - " + str(self.__dp.get_data_range_max()) + ")"
 
-        file_name = self.__data_filename_prefix + "_" + self.__dp.get_data_range_min().strftime('%Y%m%d') + \
+        file_name = self.__filename_prefix + "_" + self.__dp.get_data_range_min().strftime('%Y%m%d') + \
             "-" + self.__dp.get_data_range_max().strftime('%Y%m%d')
 
-        allan.save(out_dir, file_name, plot_title)
+        # save calculation result as image
+        allan.save(dir, file_name, plot_title)

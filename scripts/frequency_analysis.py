@@ -15,8 +15,9 @@ def main():
     result_files_path = Path(__file__).resolve(
     ).parent.parent / results_files_subfolder
 
-    tf = TimeFrequency(csv_time_column_name, csv_frequency_column_name)
-    tf.load_csv_data(csv_files_path, csv_filename_prefix)
+    tf = TimeFrequency()
+    tf.load_from_daily_csv(csv_files_path, csv_filename_prefix,
+                           csv_time_column_name, csv_frequency_column_name)
     tf.generate_mdev_plot(result_files_path)
 
 
