@@ -10,19 +10,40 @@ class Allan:
         self.__data_type = data_type
 
         self.__allan_data = None
-        self.__allan_metric = None
+        self.__allan_result = {"taus": None,
+                               "stat": None,
+                               "stat_err": None,
+                               "stat_n": None,
+                               "stat_id": None}
+
+    def calculate_adev(self, taus="octave"):
+        if not self.__source_data_available():
+            print("Can't calculate ADEV due to missing source data!")
+            return
+
+        print("Calculating ADEV...")
+
+        self.__allan_data = allantools.Dataset(
+            self.__data_set, rate=self.__rate, data_type=self.__data_type, taus=taus)
+
+        self.__allan_data.compute("adev")
+        self.__copy_computation_result()
 
     def calculate_mdev(self, taus="octave"):
-        self.__allan_metric = "MDEV"
-        print("Calculating " + self.__allan_metric + "...")
+        if not self.__source_data_available():
+            print("Can't calculate MDEV due to missing source data!")
+            return
+
+        print("Calculating MDEV...")
 
         self.__allan_data = allantools.Dataset(
             self.__data_set, rate=self.__rate, data_type=self.__data_type, taus=taus)
 
         self.__allan_data.compute("mdev")
+        self.__copy_computation_result()
 
     def save(self, out_dir, file_name, plot_title):
-        if self.__allan_data is None:
+        if not self.__computation_result_available():
             print("No data to save. Calculate wanted statistic first!")
             return
 
@@ -35,9 +56,23 @@ class Allan:
         plot.fig.suptitle(plot_title)
 
         plot.ax.set_xlabel("Tau [s]")
-        plot.ax.set_ylabel(self.__allan_metric)
+        plot.ax.set_ylabel(str(self.__allan_result["stat_id"]).upper())
 
         file_name_path = Path(out_dir) / file_name
         plot.save(file_name_path)
-        print(self.__allan_metric + " saved as: " +
+        print(str(self.__allan_result["stat_id"]).upper() + " saved as: " +
               str(file_name_path) + ".png")
+
+    # PRIVATE METHODS #
+
+    def __source_data_available(self):
+        return len(self.__data_set) >= 2
+
+    def __computation_result_available(self):
+        return self.__allan_result is not None
+
+    def __copy_computation_result(self):
+        # selective copy of the computation result
+        for key in self.__allan_result.keys():
+            if (key in self.__allan_data.out.keys()):
+                self.__allan_result[key] = self.__allan_data.out[key]

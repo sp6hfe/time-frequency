@@ -18,6 +18,7 @@ def main():
     tf = TimeFrequency()
     tf.load_from_daily_csv(csv_files_path, csv_filename_prefix,
                            csv_time_column_name, csv_frequency_column_name)
+    tf.generate_adev_plot(result_files_path)
     tf.generate_mdev_plot(result_files_path)
 
 

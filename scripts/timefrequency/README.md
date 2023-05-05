@@ -9,7 +9,7 @@ While allowing for calculations of useful metrics it is also usable for source d
 * source data loading from files (CSV)
 * analysis of the input data (missing datapoints)
 * input data resampling to create timely uniform dataset
-* calculation of the Allan deviation (MDEV) and `png` image creation
+* calculation of the Allan deviation (ADEV, MDEV) and `png` image creation
 
 ## Source data requirements
 
