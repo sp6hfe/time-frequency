@@ -11,30 +11,38 @@ class DataProvider:
         self.__raw_data = pd.DataFrame(
             columns=[self.time_column_name, self.value_column_name])
         self.__data = pd.DataFrame(columns=self.__raw_data.columns)
+        self.__missing_raw_data = pd.DataFrame(columns=[self.time_column_name])
+
+        self.__data_summary = {
+            "loaded_files_no": 0,
+            "raw_data_points_no": 0,
+            "data_points_no": 0,
+            "time_range": [0, 0],
+            "missing_raw_data_points_time": [],
+        }
 
         self.__date_path = []
-        self.__loaded_files_no = 0
+        self.__daily_suffix = '[0-9][0-9][0-9][0-9][0-9][0-9].csv'
 
     def load_from_daily_csv(self, dir, filename_prefix, time_column_name, value_column_name):
-        daily_suffix = '[0-9][0-9][0-9][0-9][0-9][0-9].csv'
 
         print("Loading data from daily CSV files...")
         self.__load_from_csv_files(
-            dir, filename_prefix, daily_suffix, time_column_name, value_column_name)
+            dir, filename_prefix, self.__daily_suffix, time_column_name, value_column_name)
 
-    def get_data_range_min(self):
-        return self.__raw_data.index.min()
-
-    def get_data_range_max(self):
-        return self.__raw_data.index.max()
+    def get_data_summary(self):
+        return self.__data_summary
 
     def get_data(self):
         return self.__data
 
+    def get_raw_data(self):
+        return self.__raw_data
+
     # PRIVATE METHODS #
 
     def __load_from_csv_files(self, data_dir, filename_prefix, filename_suffix, time_column_name, value_column_name):
-        self.__loaded_files_no = 0
+        loaded_files_no = 0
         self.__data = pd.DataFrame(
             columns=[self.time_column_name, self.value_column_name])
 
@@ -62,14 +70,16 @@ class DataProvider:
             # concatenate read data
             self.__raw_data = pd.concat([self.__raw_data, new_data], axis=0)
 
-            self.__loaded_files_no += 1
+            loaded_files_no += 1
         # index read data by time
         self.__raw_data.set_index(self.time_column_name, inplace=True)
 
-        print("Dataset was created out of " +
-              str(self.__loaded_files_no) + " matching files.")
-        print(str(len(self.__raw_data.index)) + " raw measurements span between " +
-              str(self.get_data_range_min()) + " and " + str(self.get_data_range_max()) + ".")
+        # update data summary
+        self.__data_summary["loaded_files_no"] = loaded_files_no
+        self.__data_summary["raw_data_points_no"] = len(
+            self.__raw_data.index)
+        self.__data_summary["time_range"] = [
+            self.__raw_data.index.min(), self.__raw_data.index.max()]
 
         # resample dataset to get evenly spaced time series
         self.__resample_1s()
@@ -89,9 +99,16 @@ class DataProvider:
         start_time = self.__raw_data.index[0]
         end_time = self.__raw_data.index[-1]
         data_points_times = pd.date_range(start_time, end_time, freq='1S')
+
         # and reindex in order to calculate newly added points
         self.__data = self.__data.reindex(
             data_points_times)
 
-        print("The amount of datapoints was increased by " + str(len(self.__data.index) - len(self.__raw_data.index)) +
-              " to get " + str(len(self.__data.index)) + " measurements evenly spaced in time.")
+        # analyze missing measurements in raw data (based on samples time comparison)
+        self.__missing_raw_data = data_points_times.difference(
+            self.__raw_data.index).to_frame(name=self.time_column_name, index=False)
+
+        # update data summary
+        self.__data_summary["data_points_no"] = len(self.__data.index)
+        self.__data_summary["missing_raw_data_points_time"] = self.__missing_raw_data.to_dict(
+            orient="list")[self.time_column_name]
