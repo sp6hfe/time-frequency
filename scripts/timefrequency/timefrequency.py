@@ -7,10 +7,10 @@ class TimeFrequency:
         self.__dp = DataProvider()
         self.__filename_prefix = "None"
 
-    def load_from_daily_csv(self, dir, filename_prefix, time_column_name, value_column_name):
+    def load_from_daily_csv(self, dir, filename_prefix, time_value_columns):
         self.__filename_prefix = filename_prefix
         self.__dp.load_from_daily_csv(
-            dir, self.__filename_prefix, time_column_name, value_column_name)
+            dir, self.__filename_prefix, time_value_columns)
 
     def get_data_summary(self):
         return self.__dp.get_data_summary()

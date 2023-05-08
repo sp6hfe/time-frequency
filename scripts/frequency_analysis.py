@@ -16,8 +16,8 @@ def main():
     ).parent.parent / results_files_subfolder
 
     tf = TimeFrequency()
-    tf.load_from_daily_csv(csv_files_path, csv_filename_prefix,
-                           csv_time_column_name, csv_frequency_column_name)
+    tf.load_from_daily_csv(csv_files_path, csv_filename_prefix, [
+                           csv_time_column_name, csv_frequency_column_name])
 
     data_summary = tf.get_data_summary()
 

@@ -22,13 +22,13 @@ class DataProvider:
         }
 
         self.__date_path = []
-        self.__daily_suffix = '[0-9][0-9][0-9][0-9][0-9][0-9].csv'
+        self.__daily_file_suffix = '[0-9][0-9][0-9][0-9][0-9][0-9].csv'
 
-    def load_from_daily_csv(self, dir, filename_prefix, time_column_name, value_column_name):
+    def load_from_daily_csv(self, dir, filename_prefix, time_value_columns):
 
         print("Loading data from daily CSV files...")
         self.__load_from_csv_files(
-            dir, filename_prefix, self.__daily_suffix, time_column_name, value_column_name)
+            dir, filename_prefix + self.__daily_file_suffix, time_value_columns)
 
     def get_data_summary(self):
         return self.__data_summary
@@ -41,14 +41,13 @@ class DataProvider:
 
     # PRIVATE METHODS #
 
-    def __load_from_csv_files(self, data_dir, filename_prefix, filename_suffix, time_column_name, value_column_name):
+    def __load_from_csv_files(self, data_dir, files_name_filter, time_value_columns, separator=",", comment="#"):
         loaded_files_no = 0
         self.__data = pd.DataFrame(
             columns=[self.time_column_name, self.value_column_name])
 
         # get a list of all matching files
-        dataset_file_paths = sorted(Path(data_dir).glob(
-            filename_prefix + filename_suffix))
+        dataset_file_paths = sorted(Path(data_dir).glob(files_name_filter))
 
         # create a tuples with measurement dates and file paths
         self.__date_path.clear()
@@ -61,16 +60,9 @@ class DataProvider:
 
         # load data iteratively
         for _, path in self.__date_path:
-            # parse file using provided column names
-            new_data = pd.read_csv(path, comment='#', usecols=[time_column_name, value_column_name], parse_dates=[
-                                   time_column_name], dtype={value_column_name: float})
-            # rename columns to match internal naming standard
-            new_data.rename(columns={time_column_name: self.time_column_name,
-                            value_column_name: self.value_column_name}, inplace=True)
-            # concatenate read data
-            self.__raw_data = pd.concat([self.__raw_data, new_data], axis=0)
+            if self.__load_from_csv(path, time_value_columns, None, separator, comment):
+                loaded_files_no += 1
 
-            loaded_files_no += 1
         # index read data by time
         self.__raw_data.set_index(self.time_column_name, inplace=True)
 
@@ -83,6 +75,31 @@ class DataProvider:
 
         # resample dataset to get evenly spaced time series
         self.__resample_1s()
+
+    def __load_from_csv(self, path, time_value_columns=None, time_spec=None, separator=',', comment='#'):
+        # validate columns spec to be either None or a 2 element list (time column name/index, value column name/index)
+        if time_value_columns is not None and (type(time_value_columns) is not list or len(time_value_columns) != 2):
+            print("Time/value columns specifier for " + str(path) +
+                  " is wrong (" + str(time_value_columns) + "). No data will be loaded.")
+            return False
+
+        if time_value_columns is None:
+            # TODO: handle single column file
+            print("TODO: implement handling of a single column values file.")
+            return False
+        else:
+            # read time/values
+            new_data = pd.read_csv(path, usecols=time_value_columns, parse_dates=[
+                                   time_value_columns[0]], dtype={time_value_columns[1]: float}, sep=separator, comment=comment)
+
+            # rename columns to match internal naming standard
+            new_data.rename(columns={time_value_columns[0]: self.time_column_name,
+                                     time_value_columns[1]: self.value_column_name}, inplace=True)
+
+            # concatenate read data
+            self.__raw_data = pd.concat([self.__raw_data, new_data], axis=0)
+
+        return True
 
     def __resample_1s(self):
         if (len(self.__raw_data.index) < 2):
