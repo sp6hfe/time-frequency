@@ -63,6 +63,9 @@ class DataProvider:
             if self.__load_from_csv(path, time_value_columns, None, separator, comment):
                 loaded_files_no += 1
 
+        # clear time series from errors
+        self.__remove_invalid_data()
+
         # index read data by time
         self.__raw_data.set_index(self.time_column_name, inplace=True)
 
@@ -100,6 +103,45 @@ class DataProvider:
             self.__raw_data = pd.concat([self.__raw_data, new_data], axis=0)
 
         return True
+
+    def __remove_invalid_data(self):
+        searching_for_correct_time = False
+        data_index_ranges_to_drop = []
+
+        last_correct_datetime = pd.to_datetime(
+            self.__raw_data[self.time_column_name][0])
+
+        invalid_data_starting_index = 0
+
+        for index, date in enumerate(self.__raw_data[self.time_column_name]):
+            current_datetime = pd.to_datetime(date)
+            time_difference = current_datetime - last_correct_datetime
+
+            if searching_for_correct_time:
+                if time_difference > pd.Timedelta(0):
+                    searching_for_correct_time = False
+                    # insert higher indexes 1st in order to make data dropping easier
+                    data_index_ranges_to_drop.insert(0,
+                                                     [invalid_data_starting_index, index])
+                    print("Data gap ends before: " + str(current_datetime))
+                    last_correct_datetime = current_datetime
+            else:
+                # detect if time has jumped back
+                if time_difference < pd.Timedelta(0):
+                    searching_for_correct_time = True
+                    invalid_data_starting_index = index
+                    print("Data gap start after: " +
+                          str(last_correct_datetime))
+                else:
+                    last_correct_datetime = current_datetime
+
+        # print(data_index_ranges_to_drop)
+        print(len(self.__raw_data.index))
+        for drop_range in data_index_ranges_to_drop:
+            print("Droping invalid rows: " + str(drop_range))
+            self.__raw_data.drop(
+                self.__raw_data.index[drop_range[0]:drop_range[1]], inplace=True)
+        print(len(self.__raw_data.index))
 
     def __resample_1s(self):
         if (len(self.__raw_data.index) < 2):
