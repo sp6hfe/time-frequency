@@ -63,10 +63,13 @@ class DataProvider:
             if self.__load_from_csv(path, time_value_columns, None, separator, comment):
                 loaded_files_no += 1
 
+        # after data concatenation reset the index so it matches row number (0-based)
+        self.__raw_data.reset_index(drop=True, inplace=True)
+
         # clear time series from errors
         self.__remove_invalid_data()
 
-        # index read data by time
+        # reindex source data by time
         self.__raw_data.set_index(self.time_column_name, inplace=True)
 
         # update data summary
@@ -106,42 +109,45 @@ class DataProvider:
 
     def __remove_invalid_data(self):
         searching_for_correct_time = False
-        data_index_ranges_to_drop = []
+        data_rows_ranges_to_drop = []
+        invalid_data_starting_row = 0
 
-        last_correct_datetime = pd.to_datetime(
-            self.__raw_data[self.time_column_name][0])
+        last_correct_datetime = self.__raw_data[self.time_column_name].iloc[0]
 
-        invalid_data_starting_index = 0
-
-        for index, date in enumerate(self.__raw_data[self.time_column_name]):
-            current_datetime = pd.to_datetime(date)
+        for row_index, current_datetime in enumerate(self.__raw_data[self.time_column_name]):
             time_difference = current_datetime - last_correct_datetime
 
             if searching_for_correct_time:
+                # detect if time is progressing correctly
                 if time_difference > pd.Timedelta(0):
                     searching_for_correct_time = False
-                    # insert higher indexes 1st in order to make data dropping easier
-                    data_index_ranges_to_drop.insert(0,
-                                                     [invalid_data_starting_index, index])
-                    print("Data gap ends before: " + str(current_datetime))
+                    # insert higher indexes 1st in order to make data dropping easy
+                    data_rows_ranges_to_drop.insert(
+                        0, [invalid_data_starting_row, row_index])
+                    print("Time correctly progressing from row " +
+                          str(row_index) + " (" + str(current_datetime) + ").")
+                    # time is OK again
                     last_correct_datetime = current_datetime
             else:
                 # detect if time has jumped back
                 if time_difference < pd.Timedelta(0):
                     searching_for_correct_time = True
-                    invalid_data_starting_index = index
-                    print("Data gap start after: " +
-                          str(last_correct_datetime))
+                    invalid_data_starting_row = row_index
+                    print("Time jump-back detected in row " + str(invalid_data_starting_row) +
+                          " (" + str(last_correct_datetime) + " -> " + str(current_datetime) + ".")
                 else:
                     last_correct_datetime = current_datetime
 
-        # print(data_index_ranges_to_drop)
-        print(len(self.__raw_data.index))
-        for drop_range in data_index_ranges_to_drop:
-            print("Droping invalid rows: " + str(drop_range))
-            self.__raw_data.drop(
-                self.__raw_data.index[drop_range[0]:drop_range[1]], inplace=True)
-        print(len(self.__raw_data.index))
+        # drop invalid data
+        if len(data_rows_ranges_to_drop) > 0:
+            print("Droping invalid rows...")
+            initial_size = len(self.__raw_data.index)
+            for drop_range in data_rows_ranges_to_drop:
+                self.__raw_data.drop(
+                    self.__raw_data.index[drop_range[0]:drop_range[1]], inplace=True)
+            final_size = len(self.__raw_data.index)
+            print("Source data reduced by " +
+                  str(initial_size - final_size) + " records.")
 
     def __resample_1s(self):
         if (len(self.__raw_data.index) < 2):
@@ -157,14 +163,15 @@ class DataProvider:
         # create new timebase in the range of the raw data
         start_time = self.__raw_data.index[0]
         end_time = self.__raw_data.index[-1]
-        data_points_times = pd.date_range(start_time, end_time, freq='1S')
+        resampled_data_points_time = pd.date_range(
+            start_time, end_time, freq='1S')
 
         # and reindex in order to calculate newly added points
         self.__data = self.__data.reindex(
-            data_points_times)
+            resampled_data_points_time)
 
         # analyze missing measurements in raw data (based on samples time comparison)
-        self.__missing_raw_data = data_points_times.difference(
+        self.__missing_raw_data = resampled_data_points_time.difference(
             self.__raw_data.index).to_frame(name=self.time_column_name, index=False)
 
         # update data summary
