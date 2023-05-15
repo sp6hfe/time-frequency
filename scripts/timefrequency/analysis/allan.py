@@ -66,7 +66,7 @@ class Allan:
     # PRIVATE METHODS #
 
     def __source_data_available(self):
-        return len(self.__data_set) >= 2
+        return len(self.__data_set) >= 3
 
     def __computation_result_available(self):
         return self.__allan_result is not None
